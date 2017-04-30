@@ -3,6 +3,10 @@ import urllib2
 from bs4 import BeautifulSoup
 import cookielib
 import re
+import datetime
+from datetime import date
+
+MONTHS_IN_ADVANCE = 2 #max number of months to check
 BASE_URL = 'https://evisaforms.state.gov/acs/default.asp'
 CALENDAR_BASE_URL = 'https://evisaforms.state.gov/acs/make_calendar.asp'
 APPOINTMENT_BASE_URL = 'https://evisaforms.state.gov/acs/' 
@@ -64,11 +68,48 @@ def pullAppointmentsByType(postcode='BNK',countrycode='THAI',servicetype='02B',t
           pass
 
    return appointment_data      
+
+
+def checkAvailable(start_date='2017-02-15', end_date='2017-08-29',postcode='BNK',countrycode='THAI',servicetype='02B',type_=2):
+
+   # get set up 
+   today = date.today()
+   startdate = datetime.datetime.strptime(start_date,'%Y-%m-%d')
+   enddate = datetime.datetime.strptime(end_date,'%Y-%m-%d')
+
+   # figure out which months we need to pull
+   if enddate.year >= startdate.year:
+
+      # 0 = current month only, 1 = current month and next month
+      months_to_grab = enddate.month - today.month 
+      if months_to_grab > MONTHS_IN_ADVANCE:
+         months_to_grab = MONTHS_IN_ADVANCE
+
+      appts = {}
+      while months_to_grab >= 0:
+          cur_month = today.month + months_to_grab
+          #print 'pulling: ',
+	  #print cur_month
+  
+          appts[cur_month] = pullAppointmentsByType(postcode,countrycode,servicetype,type_, cur_month,today.year)
+          months_to_grab = months_to_grab - 1
+
+      
+   else:
+	#shouldn't have run this in the first place!
+	return None
+
+   return appts
+
+
 def main():
-   appointments = pullAppointmentsByType()
-   for date in sorted(appointments,key=int):
-      print date
-      print 'Available:',appointments[date]['available']
-      print 'URL:',appointments[date]['url']
+    appts = checkAvailable('2017-05-01','2017-07-15','BRA','BRZL','02B','2')
+    print appts
+    for month in sorted(appts,key=int):
+       print "Days with appointments available in: "+str(month)+": " + str(len(appts[month]))
+       for date in sorted(appts[month],key=int):
+          print date,
+          print '(Available:',appts[month][date]['available'],')'
+#	  print 'URL:',month[date]['url']
 
 if __name__ == "__main__": main()
