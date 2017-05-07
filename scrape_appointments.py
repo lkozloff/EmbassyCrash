@@ -5,6 +5,9 @@ import cookielib
 import re
 import datetime
 from datetime import date
+from datetime import timedelta
+import time
+import json
 
 MONTHS_IN_ADVANCE = 2 #max number of months to check
 BASE_URL = 'https://evisaforms.state.gov/acs/default.asp'
@@ -101,15 +104,29 @@ def checkAvailable(start_date='2017-02-15', end_date='2017-08-29',postcode='BNK'
 
    return appts
 
+# write out next 3 months of appointments by service type and type
+def writeAppointments(postcode='BNK',countrycode='THAI',servicetype='02B',type_=2): 
+    today = date.today().isoformat()
+    year = date.today().year
+    three_months_from_now = (date.today()+timedelta(days=90)).isoformat()
+    appts = checkAvailable(today,three_months_from_now,postcode,countrycode,servicetype,type_)
+    json_rows = []
+    
+    for month in sorted(appts,key=int):
+      for day in sorted(appts[month],key=int):
+         formatted_date = str(year)+'-'+'%02d' % month+'-'+'%02d' % int(day)
+         json_rows.append({
+             'postcode': postcode,
+             'countrycode': countrycode,
+             'servicetype': servicetype,
+             'type' : type_,
+             'date': formatted_date,
+             'available': appts[month][day]['available'],
+             'url': appts[month][day]['url'],
+	     'retrieved': time.time() })
+         #print "{postcode: '%s',countrycode: '%s',servicetype:'%s',type:'%s',date:'%s',available:'%s',url:'%s',retrieved:'%s'}" % (postcode,countrycode,servicetype,type_,formatted_date,appts[month][day]['available'],appts[month][day]['url'],time.time())
+    print json.dumps(json_rows,sort_keys=True)
 
 def main():
-    appts = checkAvailable('2017-05-01','2017-07-15','BRA','BRZL','02B','2')
-    print appts
-    for month in sorted(appts,key=int):
-       print "Days with appointments available in: "+str(month)+": " + str(len(appts[month]))
-       for date in sorted(appts[month],key=int):
-          print date,
-          print '(Available:',appts[month][date]['available'],')'
-#	  print 'URL:',month[date]['url']
-
+   writeAppointments()
 if __name__ == "__main__": main()
